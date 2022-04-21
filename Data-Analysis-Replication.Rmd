@@ -1,0 +1,520 @@
+---
+title: "Data_Analysis_Replication"
+author: "Marcelle"
+date: "4/3/2022"
+output: html_document
+---
+
+## Introduction
+
+### Goal
+The goal of this paper is to test the effectiveness of the proposed behavioral paradigm, retrieval+extinction on male, Long-Evans Rats with previous moderate alcohol exposure. The effectiveness of the retrieval+extinction paradigm, where an extinction session is conducted during the retrieval induced memory reconsolidation window, is tested for return of alcohol-seeking behavior under reinstatement and spontaneous recovery conditions, or Long-Term Testing.
+
+### Homecage Induction
+The data set `induction` describes the average ethanol consumption of the male Long-Evans rats during home-cage drinking. The mean consumption increases over sessions. The graph is divided into the two groups, treatment group retrieval+extinction and control group. 
+
+### Descriptive data
+This data set was used to show the introduction and subsequent acquisition of voluntary drinking behavior in the rodent model. The means show a positive trend as sessions progress. 
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE,
+  echo = TRUE,
+  warning = TRUE,
+  message = TRUE)
+library(tidyverse)
+
+#import the induction data set and quick overview of the data fram
+f <- "https://raw.githubusercontent.com/MarcelleO/data-analysis-replication/main/data/induction-wideformat.csv"
+df <- read_csv(f, col_names = TRUE)
+head(df)
+
+
+#create new columns containing the mean of values or ethanol ingested for each session as well as standard error for each session
+df2 <- pivot_longer(df, cols=5:19, names_to="session")
+
+df2$group=as.factor(df2$group)
+df2$session=as.factor(df2$session)
+
+induction <- df2 %>%
+  group_by(group, session)%>%
+  mutate(mean=mean(value), 
+         sd=sd(value),
+         se=sd(value)/sqrt(n()),
+         )
+#order the sessions so the graph is chronologically meaningful by reverting back to as.numeric
+induction$session <- ordered(induction$session,
+                    levels = 1:15)
+
+induction$session<-as.numeric(induction$session)
+
+#Plot the ingested ethanol means as a function of session. The line graph is grouped by group, retrieval extinction or no-retrieval extinction. Include error bars using the standard error previosuly calculated.
+
+
+p1 <- ggplot(aes(session, mean, group= group, colour=group), data = induction) + geom_line() + geom_point()+ scale_x_continuous(name= "Homecage Session", limit=c(1,15), breaks=seq(1,15,1)) + geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2, position=position_dodge(0.05)) + theme_bw()+
+  theme(plot.title = element_text(size = 10, face = "bold")) +
+  theme(plot.title = element_text(hjust = 0.5)) + scale_y_continuous(name= "Ethanol Ingested (g/kg)") + theme(legend.title = element_blank()) 
+
+
+p1
+
+```
+```{r echo=FALSE, width="300px", message=FALSE}
+knitr::include_graphics("https://github.com/MarcelleO/data-analysis-replication/blob/main/images/Homecage_Drinking_Replication.png")
+
+```
+
+
+### Conditioning
+Rats were conditioned to associate a light visual cue to the presentation of a sipper containing alcohol before moving on to extinction. During this phase, it is imperative rats acquire the association before moving forward and exposed to either treatment or control extinction.
+
+
+Approach behavior is only reported during conditioning phases preCS CS1 CS2 (sipper is absent which is needed for contact data)
+
+Sipper data is reported for trial phase CS3 and CS4
+
+#Analysis
+All groups successfully acquired alcohol-seeking behavior as evidenced by a similar positive trend in acquisition in approach and contact behavior over sessions.
+
+```{r, include=FALSE}
+#import data set
+g <- "https://raw.githubusercontent.com/MarcelleO/data-analysis-replication/main/data/conditioning_approach.csv"
+dg <- read_csv(g, col_names = TRUE)
+
+head(dg)
+
+#make sure eveything is interpreted as factor
+
+dg$window <- factor(dg$window, levels= c("preCS", "CS1", "CS2"))
+dg$group=as.factor(dg$group)
+dg$session=as.factor(dg$session)
+dg$trial <- as.factor(dg$trial)
+
+
+#create new columns containing the mean of approach frequency (max 4 value) for each session as well as standard error for each session
+approach <- dg%>%
+  group_by(group, session, window)%>%
+  mutate(mean= mean(app),
+         sd=sd(app),
+         se=sd(app)/sqrt(n())
+         )
+
+
+#order the sessions so the graph is chronologically meaningful by reverting back to as.numeric
+
+approach$session <- ordered(approach$session)
+
+approach$session<-as.numeric(approach$session)
+
+#order phases or session for correct output
+
+#plot trend of conditioning data 
+p2 <- ggplot(aes(session, mean, group= group, colour=group), data = approach) + 
+  geom_line(aes(group = group, color=group)) + geom_point() + scale_x_continuous(name= "Conditioning Session", limit=c(1,12), breaks=seq(1,12,1)) + facet_wrap(~window) + geom_errorbar(aes(ymin=mean-se, ymax=mean+se))
+
+p2
+
+#import contact conditioning data set
+
+c <- "https://raw.githubusercontent.com/MarcelleO/data-analysis-replication/main/data/conditioning_contact.csv"
+dc <- read_csv(c, col_names = TRUE)
+
+#make sure eveything is interpreted as factor
+
+dc$window <- as.factor(dc$window)
+dc$group=as.factor(dc$group)
+dc$session=as.factor(dc$session)
+dc$trial <- as.factor(dc$trial)
+
+#create new columns containing the mean of contact frequency (max 4 value) for each session as well as standard error for each session
+contact <- dc %>%
+   group_by(group, session, window)%>%
+  mutate(mean= mean (con),
+         sd=sd(con),
+         n=n(),
+         se=sd(con)/sqrt(n()))
+
+
+#order the sessions so the graph is chronologically meaningful by reverting back to as.numeric
+
+contact$session <- ordered(contact$session)
+contact$session<-as.numeric(contact$session)
+
+#order phases or session for correct output
+
+#plot trend of conditioning data 
+p3 <- ggplot(aes(session, mean, group= group, colour=group), data = contact) + 
+  geom_line(aes(group = group, color=group)) + geom_point() + scale_x_continuous(name= "Conditioning Session", limit=c(1,12), breaks=seq(1,12,1)) + facet_wrap(~window) + geom_errorbar(aes(ymin=mean-se, ymax=mean+se))
+
+p3
+
+#join plots
+library(cowplot)
+
+plot_23 <- plot_grid(p2, p3)
+
+plot_23
+
+```
+
+```{r echo=FALSE, width="300px", message=FALSE}
+knitr::include_graphics("https://github.com/MarcelleO/data-analysis-replication/blob/main/images/conditioning_replication.png")
+
+```
+
+### Long-Term Testing
+To test for retrieval-extinction's effectiveness on this rodent model, reinstatement conditions, or cue presentation, were replicated to check for return of 'extinguished' behavior.
+The "Long-Term test" data set compares approach and contact behavior during Long-term testing (trial 4), where sponatneous recovery conditions were replicated after 24 hours after last extinction session as baseline, to approach and contact behavior at resintatement (trial 1). The data set also compares baseline, extinction session 14 (final extinction session to trial 1) to reinstatement (trial 1).
+
+Contact only occurs in the presence of sipper which is presented conditioning session trial pahse CS3 abd CS4.
+
+
+
+```{r}
+
+#importing data set for contact data cs3 and cs4
+r <- "https://raw.githubusercontent.com/MarcelleO/data-analysis-replication/main/data/contact_by_window-E14LTMTRT.csv"
+dr <- read_csv(r, col_names = TRUE)
+
+head(dr)
+
+#make sure eveything is interpreted as factor
+dr$window <- as.factor(dr$window)
+dr$session <- as.factor(dr$session)
+dr$group <- as.factor(dr$group)
+dr$trial <- as.factor(dr$trial)
+
+#Data analysis utilizes long-term memory test trial 4 as baseline and reinstatement trial 1 as test
+#filter out LTMT and RT sessions from the data set
+
+LTMT_con <- dr %>%
+  select(session, trial, con, window, group)%>%
+filter((session=="LTMT" & trial ==4)| (session=="RT" & trial ==1))
+
+#create new columns with mean sd and se 
+
+LTMT_con2<- LTMT_con%>% 
+  group_by(group, session, window)%>%
+ mutate(mean= mean(con),
+         sd=sd(con),
+         n=n(),
+         se=sd(con)/sqrt(n()),
+         )
+
+#plot
+
+p4 <- ggplot(aes(x=session, y=mean, group= group, colour=group), data = LTMT_con2) + 
+  geom_line(aes(group = group, color=group)) + geom_point() + facet_wrap(~window)+ geom_errorbar(aes(ymin=mean-se, ymax=mean+se))
+
+p4
+                                               
+#E14 compared to RT
+#filter E14 trial 1 and RT trial 1
+
+E14_con <- dr%>%
+  select(group, session, trial, con, window)%>%
+  filter((session == "E14" & trial == 1) | (session == "RT" & trial ==1))
+
+#create new columns with mean sd and se
+E14_con2<- E14_con%>% 
+  group_by(group,session, window)%>%
+  mutate(mean= mean(con),
+         sd=sd(con),
+         n=n(),
+         se=sd(con)/sqrt(n()))
+#plot
+
+p5 <- ggplot(aes(session, mean, group= group, colour=group), data = E14_con2) + 
+  geom_line(aes(group = group, color=group)) + geom_point() + facet_wrap(~window) + geom_errorbar(aes(ymin=mean-se, ymax=mean+se))
+
+p5
+                                                                                                
+
+#import data set for approach data preCS, CS1, CS2
+
+j <- "https://raw.githubusercontent.com/MarcelleO/data-analysis-replication/main/data/approach_by_window-E14LTMTRT.csv"
+dj <- read_csv(j, col_names = TRUE)
+
+
+#make sure everything is interpreted as factor
+dj$window <- factor(dj$window, levels= c("preCS", "CS1", "CS2"))
+dj$session <- as.factor(dj$session)
+dj$group <- as.factor(dj$group)
+dj$trial <- as.factor(dj$trial)
+
+#Data analysis utilizes long-term memory test trial 4 as baseline and reinstatement trial 1 as test
+#filter out LTMT and RT sessions from the data set
+LTMT_app <- dj%>%
+  select(group, session, trial, app, window)%>%
+  filter((session == "LTMT" & trial == 4) | (session == "RT" & trial ==1))%>%
+  filter(window %in% c("preCS", "CS1", "CS2"))
+
+#create new columns with mean sd and se
+
+LTMT_app2<- LTMT_app%>% 
+  group_by(group, session, window)%>%
+ mutate(mean= mean(app),
+         sd=sd(app),
+         sd=sd(app),
+         n=n(),
+         se=sd(app)/sqrt(n()),
+         )
+#plot
+
+p6 <- ggplot(aes(session, mean, group= group, colour=group), data = LTMT_app2) + 
+  geom_line(aes(group = group, color=group)) + geom_point() + facet_wrap(~window) + geom_errorbar(aes(ymin=mean-se, ymax=mean+se))
+
+p6
+
+#E14 compared to RT
+#filter E14 trial 1 and RT trial 1 window preCS CS1 CS2 
+
+E14_app <- dj%>%
+  select(group, session, trial, app, window)%>%
+  filter((session == "E14" & trial == 1) | (session == "RT" & trial ==1))%>%
+  filter(window %in% c("preCS", "CS1", "CS2"))
+
+#create new columns with mean sd and se
+
+E14_app2<- E14_app%>% 
+  group_by(group, session, window)%>%
+ mutate(mean= mean(app),
+         sd=sd(app),
+         sd=sd(app),
+         n=n(),
+         se=sd(app)/sqrt(n()),
+         )
+
+#plot
+
+p7 <- ggplot(aes(session, mean, group= group, colour=group), data = E14_app2) + 
+  geom_line(aes(group = group, color=group)) + geom_point() + facet_wrap(~window) + geom_errorbar(aes(ymin=mean-se, ymax=mean+se))
+
+p7
+#join the plots
+plot_64 <- plot_grid(p6, p4)
+
+plot_64
+
+
+plot_75 <- plot_grid(p7, p5)
+
+plot_75
+```
+
+### Analysis
+t-tests were conducted when comparing reinstatement testing to a baseline behavior. Behavior is defined as sipper site approach and sipper licks after sipper presentation or trial phases 3 and 4. Both the extinction and spontaneous recovery (Long-term-testing) mean data was used as baseline approach behavior. The t-test show a significance of return of approach behavior in the control group, no-standard extinction, but not in the treatment group, retrieval+extinction when comparing to both baselines of behavior. 
+
+Two p values were used to determine significance. p < 0.05 and p < 0.07
+
+
+Original published results: 
+### Conclusion
+The t-tests showed a significant return of behavior for the control group No-retrieval during phases CS2 and CS3 during reinstatement. This data supports the original hypothesis, retrieval-extinction is an effective paradigm to reduce return of alcohol-seeking behavior in rodent models exposed to moderate alcohol.
+```{r}
+
+# run one sided t-tests for RT  trial 1 mean and LTM trial 1 mean for groups retrieval+extinction vs Extinction
+#run one sided t-test for RT  trial 1 mean and E14 trial 1 mean for groups retrieval+extinction vs Extinction
+#Welch's t-tests were run for each phase
+
+#pull mean behavior for each phase to compare RT and LTMT session
+
+LT_pre_x <-  LTMT_app%>%
+   filter(window== "preCS", group== "NORET", session=="LTMT")%>%
+  select(app)
+LT_pre_y <-  LTMT_app%>%
+   filter(window== "preCS", group== "NORET", session=="RT")%>%
+  select(app)
+
+LT_pre_x2 <-  LTMT_app%>%
+   filter(window== "preCS", group== "RET", session=="LTMT")%>%
+  select(app)
+
+LT_pre_y2 <-  LTMT_app%>%
+   filter(window== "preCS", group== "RET", session=="RT")%>%
+  select(app)
+
+LT_CS1_x <-LTMT_app%>%
+   filter(window== "CS1", group== "NORET", session=="LTMT")%>%
+  select(app)
+
+LT_CS1_y <-LTMT_app%>%
+   filter(window== "CS1", group== "NORET", session=="RT")%>%
+  select(app)
+
+LT_CS1_x2 <-LTMT_app%>%
+   filter(window== "CS1", group== "RET", session=="LTMT")%>%
+  select(app)
+
+LT_CS1_y2 <-LTMT_app%>%
+   filter(window== "CS1", group== "RET", session=="RT")%>%
+  select(app)
+
+LT_CS2_x <-LTMT_app%>%
+   filter(window== "CS2", group== "NORET", session=="LTMT")%>%
+  select(app)
+
+LT_CS2_y <-LTMT_app%>%
+   filter(window== "CS2", group== "NORET", session=="RT")%>%
+  select(app)
+
+LT_CS2_x2 <-LTMT_app%>%
+   filter(window== "CS2", group== "RET", session=="LTMT")%>%
+  select(app)
+
+LT_CS2_y2 <-LTMT_app%>%
+   filter(window== "CS2", group== "RET", session=="RT")%>%
+  select(app)
+
+LT_CS3_x <- LTMT_con%>%
+  filter(window== "CS3", group== "NORET", session=="LTMT")%>%
+  select(con)
+LT_CS3_y <- LTMT_con%>%
+ filter(window== "CS3", group== "NORET", session=="RT")%>%
+  select(con)
+LT_CS3_x2<- LTMT_con%>%
+  filter(window== "CS3", group== "RET", session=="LTMT")%>%
+  select(con)
+LT_CS3_y2 <- LTMT_con%>%
+ filter(window== "CS3", group== "RET", session=="RT")%>%
+  select(con)
+
+LT_CS4_x <- LTMT_con%>%
+filter(window== "CS4", group== "NORET", session=="LTMT")%>%
+  select(con)
+LT_CS4_y<- LTMT_con%>%
+  filter(window== "CS4", group== "NORET", session=="RT")%>%
+  select(con)
+LT_CS4_x2<- LTMT_con%>%
+filter(window== "CS4", group== "RET", session=="LTMT")%>%
+  select(con)
+LT_CS4_y2<- LTMT_con%>%
+  filter(window== "CS4", group== "RET", session=="RT")%>%
+  select(con)
+
+
+  
+E_pre_x<- E14_app%>%
+  filter(window== "preCS", group== "NORET", session=="E14")%>%
+  select(app)
+E_pre_y<- E14_app%>%
+  filter(window== "preCS", group== "NORET", session=="RT")%>%
+  select(app)
+E_pre_x2 <- E14_app%>%
+  filter(window== "preCS", group== "RET", session=="E14")%>%
+  select(app)
+E_pre_y2 <- E14_app%>%
+  filter(window== "preCS", group== "RET", session=="RT")%>%
+  select(app)
+E_CS1_x<-E14_app%>%
+  filter(window== "CS1", group== "NORET", session=="E14")%>%
+  select(app)
+E_CS1_y <-E14_app%>%
+  filter(window== "CS1", group== "NORET", session=="RT")%>%
+  select(app)
+E_CS1_x2<-E14_app%>%
+  filter(window== "CS1", group== "RET", session=="E14")%>%
+  select(app)
+E_CS1_y2 <-E14_app%>%
+  filter(window== "CS1", group== "RET", session=="RT")%>%
+  select(app)
+E_CS2_x <-E14_app%>%
+  filter(window== "CS2", group== "NORET", session=="E14")%>%
+  select(app)
+E_CS2_y <-E14_app%>%
+  filter(window== "CS2", group== "NORET", session=="RT")%>%
+  select(app)
+E_CS2_x2 <-E14_app%>%
+  filter(window== "CS2", group== "RET", session=="E14")%>%
+  select(app)
+E_CS2_y2 <-E14_app%>%
+  filter(window== "CS2", group== "RET", session=="RT")%>%
+  select(app)
+E_CS3_x <- E14_con %>%
+  filter(window== "CS3", group== "NORET", session=="E14")%>%
+  select(con)
+E_CS3_y <- E14_con %>%
+   filter(window== "CS3", group== "NORET", session=="RT")%>%
+  select(con)
+E_CS3_x2 <- E14_con %>%
+   filter(window== "CS3", group== "RET", session=="E14")%>%
+  select(con)
+E_CS3_y2 <- E14_con %>%  
+ filter(window== "CS3", group== "RET", session=="RT")%>%
+  select(con)
+E_CS4_x <-E14_con %>%
+   filter(window== "CS4", group== "NORET", session=="E14")%>%
+  select(con)
+E_CS4_y <-E14_con %>%
+   filter(window== "CS4", group== "NORET", session=="RT")%>%
+  select(con)
+E_CS4_x2 <-E14_con %>%
+   filter(window== "CS4", group== "RET", session=="E14")%>%
+  select(con)
+E_CS4_y2 <-E14_con %>%
+   filter(window== "CS4", group== "RET", session=="RT")%>%
+  select(con)
+  
+#run welch's t-test for each phase (window) (20 total)
+#LTMT trial 4 compared to RT trial 1 contact means AKA  comparing ret+extinction vs Extinction
+LTMT_preN <- t.test(LT_pre_x , LT_pre_y)
+  LTMT_preN$p.value
+LTMT_preR <- t.test(LT_pre_x2 , LT_pre_y2)
+  LTMT_preR$p.value
+LTMT_CS1N <- t.test(LT_CS1_x , LT_CS1_y)
+  LTMT_CS1N$p.value
+LTMT_CS1R <- t.test(LT_CS1_x2 , LT_CS1_y)
+  LTMT_CS1R$p.value
+LTMT_CS2N <- t.test(LT_CS2_x , LT_CS2_y)
+  LTMT_CS2N$p.value
+LTMT_CS2R <- t.test(LT_CS2_x2, LT_CS2_y2)
+  LTMT_CS2R$p.value
+LTMT_CS3N <- t.test(LT_CS3_x, LT_CS3_y) 
+  LTMT_CS3N$p.value
+LTMT_CS3R <- t.test(LT_CS3_x2, LT_CS3_y2) 
+  LTMT_CS3R$p.value  
+LTMT_CS4N <- t.test(LT_CS4_x, LT_CS4_y) 
+  LTMT_CS4N$p.value  
+LTMT_CS4R <- t.test(LT_CS4_x2, LT_CS4_y2) 
+  LTMT_CS4R$p.value
+
+
+E14_preE <- t.test( E_pre_x, E_pre_y)
+  E14_preE$p.value
+E14_preR <- t.test( E_pre_x2, E_pre_y2)
+  E14_preR$p.value
+E14_CS1E <-  t.test( E_CS1_x, E_CS1_y)
+  E14_CS1E$p.value
+E14_CS1R <-  t.test( E_CS1_x2, E_CS1_y2)
+  E14_CS1R$p.value
+E14_CS2E <-t.test( E_CS2_x, E_CS2_y)
+  E14_CS2E$p.value
+E14_CS2R <-t.test( E_CS2_x2, E_CS2_y2)
+  E14_CS2R$p.value
+E14_CS3E <-t.test(  E_CS3_x, E_CS3_y)
+  E14_CS3E$p.value
+E14_CS3R <-t.test(  E_CS3_x2, E_CS3_y2)
+  E14_CS3R$p.value
+E14_CS4E <- t.test(  E_CS4_x, E_CS4_y)
+  E14_CS4E$p.value
+E14_CS4R <- t.test(  E_CS4_x2, E_CS4_y2)
+  E14_CS4R$p.value
+```
+
+```{r echo=FALSE, width="300px", message=FALSE}
+knitr::include_graphics("https://github.com/MarcelleO/data-analysis-replication/blob/main/images/reinstatement%20replication.png")
+
+```
+
+
+### Discussion
+The data used to replicate the analysis was not available on line or published online. As a result, the data was acquired after reaching out to the author for the data sets.
+The first hurdle was trying to determine what data sets were used for which analyses because they were  not labeled clearly. In addition the data sets were not clear sometimes as to the groups or behavioral procedure the data is describing (trial 1 but no mention if this was conditioning data or extinction data).
+
+The data was sent to me by the first author, and was already cleaned and R friendly. The majority of the time dedicated to replicating the data was figuring out how to manipulate the data frames to begin the analyses. 
+
+Using the author's data I was able to replicate the p-vales for each group to support the published. There was a significant return on behavior in Reinstatement for Long-term memory testing  baseline CS1 and CS3  p <0.05 no-ret group and CS2 and CS3 p< 0.05 for no-ret group with with Extinction baseline.
+
+
+
+### References
+Cofresi et al (2017) Alcohol Clin Exp Res 41(3):608-617 
